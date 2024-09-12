@@ -1,0 +1,657 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "gLab Identity Service",
+    "description": "JWT Identity Service for Galvanize Projects",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Rob Wing",
+      "email": "rob.wing@galvanize.com"
+    }
+  },
+  "servers": [
+    {
+      "description": "QA Deployment - Gateway",
+      "url": "http://bakery.galvanizelabs.net"
+    },
+    {
+      "description": "QA Deployment",
+      "url": "http://identity.galvanizelabs.net"
+    },
+    {
+      "description": "Development",
+      "url": "http://localhost:9100"
+    }
+  ],
+  "tags": [
+    {"name": "Authorization", "description": "Username / Password authentication and authorization"},
+    {"name": "Registration", "description": "User Registration"},
+    {"name": "Admin", "description": "Resources for Administrators"}
+  ],
+  "paths": {
+    "/api/auth/": {
+      "post": {
+        "tags": [
+          "Authorization"
+        ],
+        "summary": "Login with username and password",
+        "requestBody": {
+          "description": "Username and password to login",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Login"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted / Successful login",
+            "headers": {
+              "Authorization": {
+                "description": "JWT Token",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/account": {
+      "get": {
+        "tags": [
+          "Registration"
+        ],
+        "description": "Display the current users login information",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/account/register": {
+      "post": {
+        "tags": [
+          "Registration"
+        ],
+        "description": "User self registration",
+        "requestBody": {
+          "description": "User's registration information.  Inserts into the 'USER' role",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Registration"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted / Successful registration"
+          },
+          "400": {
+            "description": "Bad Request / Username not available"
+          }
+        }
+      }
+    },
+    "/api/account/passwd": {
+      "patch": {
+        "tags": [
+          "Registration"
+        ],
+        "description": "User change password",
+        "security": [
+          {
+            "bearerAuth": ["ROLE_USER"]
+          }
+        ],
+        "requestBody": {
+          "description": "User self change password",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted / Password Changed"
+          },
+          "503": {
+            "description": "Other error changing password"
+          }
+        }
+      }
+    },
+    "/api/admin/users/{username}": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "Get a user's details",
+        "security": [
+          {
+            "bearerAuth": ["ROLE_ADMIN"]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "description": "The current username for the user you wish to modify",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "Username not found"
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Admin"],
+        "description": "Update Username, first, last, email, or password only",
+        "security": [
+          {
+            "bearerAuth": ["ROLE_ADMIN"]
+          }
+        ],
+        "requestBody": {
+          "description": "User object with Changes to apply - Does not need to be complete.  Only changes will be applied",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserDetails"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "description": "The current username for the user you wish to modify",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Changes Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "Username was not found"
+          }
+        }
+      }
+    },
+    "/api/admin/roles": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "List Roles",
+        "operationId": "getRoles",
+        "security": [
+          {
+            "bearerAuth": ["ROLE_ADMIN"]
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success - Roles Returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Role"
+                  }
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Admin"],
+        "summary": "Add a new role",
+        "operationId": "addNewRole",
+        "security": [
+          {
+            "bearerAuth": ["ROLE_ADMIN"]
+          }
+        ],
+        "requestBody": {
+          "description": "Role to add",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Role"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "New role created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Role"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid Item"
+          },
+          "409": {
+            "description": "Role already exists"
+          }
+        }
+      }
+    },
+    "/api/admin/roles/{role}": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "List Role details with associated users",
+        "operationId": "getRole",
+        "security": [
+          {
+            "bearerAuth": ["ROLE_ADMIN"]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "role",
+            "in": "path",
+            "description": "The name of the role (case insensitive), without the prefix your are looking for",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": ["USER", "admin", "mOderAToR"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content / Not found"
+          }
+        }
+      },
+      "patch": {
+        "tags": ["Admin"],
+        "summary": "Update Role name or description",
+        "operationId": "updateRole",
+        "security": [
+          {
+            "bearerAuth": ["ROLE_ADMIN"]
+          }
+        ],
+        "requestBody": {
+          "description": "Role to add",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Role"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "role",
+            "in": "path",
+            "description": "The name of the role (case insensitive), without the prefix your are looking for",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": ["USER", "admin", "mOderAToR"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "Role NOT found"
+          },
+          "409": {
+            "description": "Role contains assigned users.  Delete users first"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Admin"],
+        "summary": "Delete a role",
+        "description": "Deletes a role with no assignments, otherwise, throws an error",
+        "operationId": "deleteRole",
+        "security": [
+          {
+            "bearerAuth": ["ROLE_ADMIN"]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "role",
+            "in": "path",
+            "description": "The name of the role (case insensitive), without the prefix your are looking for",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": ["USER", "admin", "mOderAToR"]
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Delete scheduled"
+          },
+          "204": {
+            "description": "Role NOT found"
+          },
+          "409": {
+            "description": "Role contains assigned users.  Delete users first"
+          }
+        }
+      }
+    },
+    "/api/admin/roles/{role}/{username}": {
+      "put": {
+        "tags": ["Admin"],
+        "summary": "Add a user to a role",
+        "description": "If the user already exists in the role, then it's still successful",
+        "operationId": "addRoleUser",
+        "security": [
+          {
+            "bearerAuth": ["ROLE_ADMIN"]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "role",
+            "in": "path",
+            "description": "The name of the role (case insensitive), without the prefix your are looking for",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": ["USER", "admin", "mOderAToR"]
+            }
+          },
+          {
+            "name": "username",
+            "in": "path",
+            "description": "username to add to this role",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "User added to role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDetails"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "Role or username not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Admin"],
+        "summary": "Remove user from role",
+        "description": "Removes a user from this role, still successful if the user is not in the role",
+        "operationId": "removeRoleUser",
+        "security": [
+          {
+            "bearerAuth": ["ROLE_ADMIN"]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "role",
+            "in": "path",
+            "description": "The name of the role (case insensitive), without the prefix your are looking for",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": ["USER", "admin", "mOderAToR"]
+            }
+          },
+          {
+            "name": "username",
+            "in": "path",
+            "description": "username to add to this role",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Removal scheduled"
+          },
+          "204": {
+            "description": "Role or username not found"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "Login": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "anyuser"
+          },
+          "password": {
+            "type": "string",
+            "example": "fancy@password"
+          }
+        }
+      },
+      "PasswordChange": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "anyusername"
+          },
+          "currentPassword": {
+            "type": "string",
+            "example": "old@password"
+          },
+          "newPassword": {
+            "type": "string",
+            "example": "new!and@better%password"
+          }
+        }
+      },
+      "Registration": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "example": "John"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "Doe"
+          },
+          "username": {
+            "type": "string",
+            "example": "jdoe"
+          },
+          "email": {
+            "type": "string",
+            "example": "jdoe@email.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "fancy&password123"
+          }
+        }
+      },
+      "Role":{
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Database ID (probably will be hidden)"
+          },
+          "name": {
+            "type": "string",
+            "description": "Role Name",
+            "example": "ROLE_USER"
+          },
+          "description": {
+            "type": "string",
+            "maximum": 250,
+            "description": "Description of the role",
+            "example": "General user of the system"
+          }
+        }
+      },
+      "User": {
+        "required": [
+          "username",
+          "email",
+          "firstName",
+          "lastName",
+          "password"
+        ],
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "Database ID (probably will be hidden)"
+          },
+          "username": {
+            "type": "string",
+            "description": "Login name for this user",
+            "example": "jdoeuser"
+          },
+          "email": {
+            "type": "string",
+            "example": "jdoe@email.com"
+          },
+          "firstName": {
+            "type": "string",
+            "example": "Jane"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "Doe"
+          },
+          "password": {
+            "type": "string",
+            "example": "123FastCarsNow!"
+          }
+        }
+      },
+      "RoleDetails": {
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "users": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/User"
+            }
+          }
+        }
+      },
+      "UserDetails": {
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/User"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Role"
+            }
+          }
+        }
+      }
+    }
+  }
+}
